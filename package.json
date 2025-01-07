@@ -1,0 +1,50 @@
+{
+  "name": "netflix-backend-api",
+  "version": "1.0.0",
+  "description": "A robust backend API for a Netflix clone, built with Node.js, Express, and MongoDB, providing authentication, user management, movie data, and streaming features.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "netflix",
+    "backend",
+    "api",
+    "nodejs",
+    "@VM",
+    "express",
+    "mongodb",
+    "authentication",
+    "user management",
+    "movie database",
+    "movie streaming",
+    "video platform",
+    "media server",
+    "movie service",
+    "rest api"
+  ],
+  "author": "Crafted with 💡 by Abdul Mujeeb | Powered by @VM",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.3",
+    "nodemailer": "^6.9.16",
+    "ts-typesafe-env": "^1.1.0",
+    "uuid": "^11.0.4"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0",
+    "nodemon": "^3.1.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Innocent6303/NETFLIX-BACKEND"
+  }
+}
