@@ -1,4 +1,4 @@
-import UserRepository from "../repositories/index.js";
+import { UserRepository, AdminRepository } from "../repositories/index.js";
 
 import {
   BadRequestError,
@@ -11,8 +11,9 @@ import { validateSignup } from "../validations/index.js";
 import { ERROR_MESSAGES, REGEX_PATTERNS, ROLES } from "../config/index.js";
 
 class AuthService {
-  async signUpUser(userData, res) {
+  async signUpUser(userData, res, type) {
     // console.log("incomming response ", userData);
+
     const { name, email, password, phoneNr } = userData;
     validateSignup(email, password, phoneNr, name);
     if (!REGEX_PATTERNS.EMAIL.test(email)) {
@@ -25,16 +26,27 @@ class AuthService {
       throw new BadRequestError(ERROR_MESSAGES.INVALID_PHONE);
     }
     const condition = { $or: [{ email }, { phoneNr }] };
-    const existingUser = await UserRepository.findUserByCondition(condition);
+    if (type === "user") {
+      const existingUser = await UserRepository.findUserByCondition(condition);
 
-    // console.log(existingUser);
-    if (existingUser) {
-      throw new ConflictError(ERROR_MESSAGES.USER_EXISTS);
+      if (existingUser) {
+        throw new ConflictError(ERROR_MESSAGES.USER_EXISTS);
+      }
+    } else if (type === "admin") {
+      const existingAdmin = await AdminRepository.findAdminByCondition(
+        condition
+      );
+      if (existingAdmin) {
+        throw new ConflictError(ERROR_MESSAGES.ADMIN_EXISTS);
+      }
     }
 
-    const role = ROLES.USER;
+    // console.log(existingUser);
 
-    const savedUser = await UserRepository.createUser({
+    const role = type === "user" ? ROLES.USER : ROLES.ADMIN;
+    const createMethod =
+      type === "user" ? UserRepository.createUser : AdminRepository.createAdmin;
+    const savedUser = await createMethod({
       ...userData,
       role,
     });
@@ -50,7 +62,7 @@ class AuthService {
     };
   }
 
-  async signInUser(identifier, password, res) {
+  async signInUser(identifier, password, res, type) {
     const isEmail = REGEX_PATTERNS.EMAIL.test(identifier);
     const isPhone = REGEX_PATTERNS.PHONE.test(identifier);
     if (!isEmail && !isPhone) {
@@ -59,7 +71,12 @@ class AuthService {
     const condition = isEmail
       ? { email: identifier }
       : { phoneNr: identifier.trim() };
-    const user = await UserRepository.findUserByCondition(condition);
+    const Repository =
+      type === "user"
+        ? UserRepository.findUserByCondition
+        : AdminRepository.findAdminByCondition;
+
+    const user = await Repository(condition);
     if (!user) {
       throw new NotFoundError(ERROR_MESSAGES.USER_NOT_FOUND);
     }
@@ -67,8 +84,13 @@ class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedError(ERROR_MESSAGES.INVALID_PASSWORD);
     }
+
+    const updateRepository =
+      type === "user"
+        ? UserRepository.updateUserDetails
+        : AdminRepository.updateAdminDetails;
     if (isPasswordValid) {
-      await UserRepository.updateUserDetails(user.id, {
+      await updateRepository(user.id, {
         lastLoginAt: new Date(),
       });
       await generateToken(res, user._id, user.role);

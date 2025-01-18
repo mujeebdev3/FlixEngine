@@ -6,6 +6,7 @@ import { BadRequestError, refreshToken } from "../utils/index.js";
 const authMiddleware = (Roles = []) => {
   return async (req, res, next) => {
     let accessToken = req.cookies?.access_token;
+    // console.log("access token: " + accessToken);
 
     if (!accessToken) {
       // next(

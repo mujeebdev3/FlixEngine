@@ -1,4 +1,4 @@
-import UserRepository from "../repositories/index.js";
+import { UserRepository } from "../repositories/index.js";
 import { BadRequestError, NotFoundError } from "../utils/index.js";
 import sendResetPasswordEmail from "../jobs/index.js";
 import { ERROR_MESSAGES, REGEX_PATTERNS } from "../config/index.js";

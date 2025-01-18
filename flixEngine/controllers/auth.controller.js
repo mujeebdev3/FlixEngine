@@ -5,7 +5,8 @@ class authController {
   async userSignupController(req, res, next) {
     try {
       const userData = req.body;
-      const user = await AuthService.signUpUser(userData, res);
+      const type = req.userType;
+      const user = await AuthService.signUpUser(userData, res, type);
       res.status(STATUS_CODES.CREATED).json({
         message: SUCCESS_MESSAGES.USER_REGISTERED,
         data: user,
@@ -20,7 +21,13 @@ class authController {
   async userSignInController(req, res, next) {
     try {
       const { identifier, password } = req.body;
-      const user = await AuthService.signInUser(identifier, password, res);
+      const type = req.userType;
+      const user = await AuthService.signInUser(
+        identifier,
+        password,
+        res,
+        type
+      );
       res.status(STATUS_CODES.SUCCESS).json({
         message: SUCCESS_MESSAGES.USER_LOGGED_IN,
         data: user,
