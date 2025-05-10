@@ -17,6 +17,6 @@ adminRouter.put(
 );
 adminRouter.post("/forgot-password", adminController.forgetPassword);
 
-adminRouter.post("/reset-password", adminController.resetPassword);
+adminRouter.post("/reset-password/:resetToken", adminController.resetPassword);
 
 export default adminRouter;
