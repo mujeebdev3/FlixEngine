@@ -13,11 +13,11 @@ class UserService {
     // console.log("userdetails", user.password);
     return {
       userDetails: {
-        _id: user._id,
-        email: user.email,
-        phoneNr: user.phoneNr,
-        role: user.role,
-        user,
+        // _id: user._id,
+        // email: user.email,
+        // phoneNr: user.phoneNr,
+        // role: user.role,
+        ...user.toObject(),
       },
     };
   }
@@ -72,7 +72,12 @@ class UserService {
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
-    await sendResetPasswordEmail(user.email, resetToken);
+    await sendResetPasswordEmail(
+      user.name,
+      user.email,
+      resetToken,
+      "password-reset"
+    );
 
     return {
       response: ERROR_MESSAGES.FORGOT_PASSWORD_EMAIL_SENT,
@@ -93,6 +98,12 @@ class UserService {
     user.resetPasswordToken = undefined;
     user.markModified("password");
     await user.save();
+    await sendResetPasswordEmail(
+      user.name,
+      user.email,
+      null,
+      "password-updated"
+    );
   }
 }
 

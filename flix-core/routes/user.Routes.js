@@ -17,6 +17,6 @@ userRouter.put(
 );
 userRouter.post("/forgot-password", userController.forgetPassword);
 
-userRouter.post("/reset-password", userController.resetPassword);
+userRouter.post("/reset-password/:resetToken", userController.resetPassword);
 
 export default userRouter;

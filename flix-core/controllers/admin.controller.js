@@ -27,7 +27,7 @@ class adminController {
     try {
       const userId = req.userId;
       const userData = req.body;
-      const updatedUser = await AdminService.updateUserDetails(
+      const updatedUser = await AdminService.updateAdminDetails(
         userData,
         userId
       );
@@ -45,6 +45,8 @@ class adminController {
   async forgetPassword(req, res, next) {
     try {
       const { identifier } = req.body;
+      console.log("identifier", identifier);
+
       const response = await AdminService.forgotPassword(identifier);
       res.status(STATUS_CODES.SUCCESS).json({
         message: SUCCESS_MESSAGES.OPERATION_SUCCESSFUL,
