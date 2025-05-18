@@ -8,7 +8,7 @@ import {
   NotFoundError,
 } from "../utils/index.js";
 import CloudinaryUploader from "./cloudinaryuploader.js";
-import { ERROR_MESSAGES } from "../config/constants.js";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "../config/constants.js";
 
 class MovieService {
   static async getAllMovies(page, limit, genre) {
@@ -30,14 +30,39 @@ class MovieService {
       };
     }
 
-    const formattedMovies = movies.map((movie, index) => ({
-      movie: index + 1 + (page - 1) * limit,
-      ...movie,
-    }));
+    // const formattedMovies = movies.map((movie, index) => ({
+    //   movie: index + 1 + (page - 1) * limit,
+    //   ...movie,
+    // }));
+
+    // return {
+    //   totalMovies,
+    //   movies: formattedMovies,
+    // };
+
+    const formattedMovies = await Promise.all(
+      movies.map(async (movie, index) => {
+        const averageRating = await MovieRepository.calculateAverageRating(
+          movie._id
+        );
+        const averageComment = await MovieRepository.calculateComment(
+          movie._id
+        );
+
+        return {
+          movie: index + 1 + (page - 1) * limit,
+          ...movie,
+          rating: averageRating ?? null, // assign calculated average rating or null
+          comment: averageComment ?? null, // assign calculated average comment or null
+        };
+      })
+    );
 
     return {
       totalMovies,
       movies: formattedMovies,
+      currentPage: page,
+      totalPages: Math.ceil(totalMovies / limit),
     };
   }
 
@@ -56,7 +81,7 @@ class MovieService {
       director,
       releaseYear,
       description,
-      cast,
+
       duration,
 
       trailerLink,
@@ -64,6 +89,18 @@ class MovieService {
       language,
       releaseDate,
     } = movieData;
+    let cast = movieData.cast;
+    console.log("cast", cast);
+    console.log("cast", typeof cast);
+    if (typeof cast === "string") {
+      try {
+        cast = JSON.parse(cast);
+      } catch (err) {
+        console.log("err", err);
+        throw new BadRequestError("Cast should be an array of objects");
+      }
+    }
+    movieData.cast = cast;
 
     // console.log("cover image uri", coverImageUri);
     // console.log("video file uri", videoFileUri);
@@ -96,27 +133,78 @@ class MovieService {
     }
 
     // Generic function to handle file uploads
-    const uploadFiles = async (filePaths, folderName) => {
+    const uploadFiles = async (filePaths, folderName, resource_type) => {
       return Promise.all(
         filePaths.map(async (filepath) => {
           const result = await CloudinaryUploader.uploadFile(
             filepath,
-            folderName
+            folderName,
+            resource_type,
+            title
           );
 
           return result ? result.secure_url : null;
         })
       );
     };
-    const start = Date.now();
-    const uploadedCoverImages = await uploadFiles(coverImageUri, "CoverImage");
 
-    const Duration = Date.now() - start;
-    console.log("Duration for image  ", Duration);
-    const startV = Date.now();
-    const uploadedVideos = await uploadFiles(videoFileUri, "VideoFile");
-    const DurationV = Date.now() - startV;
-    console.log("Duration for Video  ", DurationV);
+    let uploadedCoverImages;
+    let uploadedVideos;
+
+    try {
+      const start = Date.now();
+      uploadedCoverImages = await uploadFiles(
+        coverImageUri,
+        "CoverImage",
+        "image"
+      );
+
+      const Duration = Date.now() - start;
+      console.log("Duration for image  ", Duration);
+      const startV = Date.now();
+      uploadedVideos = await uploadFiles(videoFileUri, "VideoFile", "video");
+      console.log("uploaded videos", uploadedVideos);
+
+      const DurationV = Date.now() - startV;
+      console.log("Duration for Video  ", DurationV);
+
+      const newMovie = await MovieRepository.createMovie({
+        ...movieData,
+        coverImageUri: uploadedCoverImages,
+        videoFileUri: uploadedVideos,
+      });
+      if (!newMovie) {
+        throw new BadRequestError();
+      }
+
+      return newMovie;
+    } catch (err) {
+      console.error("Error uploading files:", err);
+      await CloudinaryUploader.deleteLocalFiles(coverImageUri);
+      await CloudinaryUploader.deleteLocalFiles(videoFileUri);
+
+      if (uploadedCoverImages?.length) {
+        for (const url of uploadedCoverImages) {
+          // console.log("url", url);
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+          // console.log("public_id", public_id);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+
+      if (uploadedVideos?.length) {
+        for (const url of uploadedVideos) {
+          // console.log("url", url);
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+          // console.log("public_id", public_id);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+
+      throw err;
+    }
 
     /**   xxxxxxxxxxxxxxxxxxxxxxxxxx    */
     // const start = Date.now();
@@ -134,22 +222,130 @@ class MovieService {
     // // console.log("uploaded image testing ");
     // // console.log("uploaded images", uploadedImages);
     /**   xxxxxxxxxxxxxxxxxxxxxxxxxx    */
+  }
 
-    const newMovie = await MovieRepository.createMovie({
-      ...movieData,
-      coverImageUri: uploadedCoverImages,
-      videoFileUri: uploadedVideos,
-    });
-    if (!newMovie) {
-      throw new BadRequestError();
+  static async updateMovie(movieId, movieData, coverImageUri, videoFileUri) {
+    if (!movieData) {
+      throw new BadRequestError("Movie data is required");
     }
-    return newMovie;
+    const uploadFiles = async (filePaths, folderName, resource_type, title) => {
+      return Promise.all(
+        filePaths.map(async (filepath) => {
+          const result = await CloudinaryUploader.uploadFile(
+            filepath,
+            folderName,
+            resource_type,
+            title
+          );
+
+          return result ? result.secure_url : null;
+        })
+      );
+    };
+
+    const movie = await MovieRepository.findMovieById(movieId);
+    if (!movie) {
+      throw new NotFoundError(ERROR_MESSAGES.MOVIE_NOT_FOUND);
+    }
+    console.log("movie", movie);
+
+    const oldCoverImageUri = movie.coverImageUri || [];
+    const oldVideoFileUri = movie.videoFileUri || [];
+
+    let uploadedCoverImages;
+    let uploadedVideos;
+
+    try {
+      uploadedCoverImages = await uploadFiles(
+        coverImageUri,
+        "CoverImage",
+        "image",
+        movieData?.title || movie.title
+      );
+
+      uploadedVideos = await uploadFiles(
+        videoFileUri,
+        "VideoFile",
+        "video",
+        movieData?.title || movie.title
+      );
+
+      const updatedMovie = await MovieRepository.updateMovie(movieId, {
+        ...movieData,
+        coverImageUri: uploadedCoverImages,
+        videoFileUri: uploadedVideos,
+      });
+
+      if (!updatedMovie) {
+        await CloudinaryUploader.deleteLocalFiles(coverImageUri);
+        await CloudinaryUploader.deleteLocalFiles(videoFileUri);
+
+        if (uploadedCoverImages?.length) {
+          for (const url of uploadedCoverImages) {
+            const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+            await CloudinaryUploader.deleteUploadedFile(public_id);
+          }
+        }
+        if (uploadedVideos?.length) {
+          for (const url of uploadedVideos) {
+            const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+            await CloudinaryUploader.deleteUploadedFile(public_id);
+          }
+        }
+
+        throw new NotFoundError(ERROR_MESSAGES.MOVIE_ERROR);
+      }
+
+      // safely delete old cloudinary files
+      if (coverImageUri.length > 0) {
+        for (const url of oldCoverImageUri) {
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+      if (videoFileUri.length > 0) {
+        for (const url of oldVideoFileUri) {
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+
+      return SUCCESS_MESSAGES.MOVIE_UPDATED;
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      await CloudinaryUploader.deleteLocalFiles(coverImageUri);
+      await CloudinaryUploader.deleteLocalFiles(videoFileUri);
+
+      if (uploadedCoverImages?.length) {
+        for (const url of uploadedCoverImages) {
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+
+      if (uploadedVideos?.length) {
+        for (const url of uploadedVideos) {
+          const public_id = await CloudinaryUploader.getPublicIdFromUrl(url);
+
+          await CloudinaryUploader.deleteUploadedFile(public_id);
+        }
+      }
+
+      throw error;
+    }
+
+    // console.log("moviedata", movieData);
   }
 
   static async rateMovie(movieId, userId, rating, comment) {
     // Convert the rating to a number
     const numericRating = parseInt(rating, 10);
-    // console.log("Converted rating:", numericRating);
+    console.log("Converted rating:", numericRating);
 
     // Validate the rating
     if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
@@ -180,12 +376,10 @@ class MovieService {
     let result;
     if (existingRating) {
       // If a rating exists, update it
-      result = await MovieRepository.updateMovieRating(
-        movieId,
-        userId,
-        numericRating,
-        sanitizedComment
-      );
+      result = await MovieRepository.updateMovieRating(movieId, userId, {
+        rating: numericRating,
+        comment: sanitizedComment,
+      });
     } else {
       // If no rating exists, create a new one
       result = await MovieRepository.addMovieRating(
@@ -211,17 +405,48 @@ class MovieService {
     };
   }
 
-  static async updateMovie(movieId, movieData) {
-    if (!movieData) {
-      throw new BadRequestError("Movie data is required");
+  static async deleteUserRating(movieId, userId, deleteType) {
+    const existingRating = await MovieRepository.findUserRating(
+      movieId,
+      userId
+    );
+    console.log("existingRating", existingRating);
+    if (!existingRating) {
+      throw new NotFoundError("Rating not found");
     }
-    // console.log("moviedata", movieData);
-    const movie = await MovieRepository.updateMovie(movieId, movieData);
+    if (!deleteType) {
+      return await MovieRepository.deleteUserRating(movieId, userId);
+    }
 
-    if (!movie) {
-      throw new NotFoundError(ERROR_MESSAGES.MOVIE_NOT_FOUND);
+    const unsetFields = {};
+
+    if (deleteType === "rating") {
+      unsetFields.rating = "";
+    } else if (deleteType === "comment") {
+      unsetFields.comment = "";
+    } else {
+      throw new BadRequestError("Invalid deleteType");
     }
-    return movie;
+    console.log("updatedField", unsetFields);
+
+    const updateRating = await MovieRepository.updateRatingPartial(
+      movieId,
+      userId,
+      unsetFields
+    );
+
+    // Calculate the new average rating for the movie
+    const averageRating = await MovieRepository.calculateAverageRating(movieId);
+    const averageComment = await MovieRepository.calculateComment(movieId);
+
+    console.log("avr ", averageComment, averageRating);
+
+    await MovieRepository.updateMovie(movieId, {
+      rating: averageRating,
+      comment: averageComment,
+    });
+
+    return updateRating;
   }
 
   static async searchMovie(query) {
@@ -235,8 +460,12 @@ class MovieService {
     return movies;
   }
 
-  static async deleteMovie(movieId) {
-    return await MovieRepository.deleteMovie(movieId);
+  static async softDeleteMovie(movieId) {
+    return await MovieRepository.softDeleteMovie(movieId);
+  }
+
+  static async hardDeleteMovie(movieId) {
+    return await MovieRepository.hardDeleteMovie(movieId);
   }
 }
 export default MovieService;

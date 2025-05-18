@@ -11,21 +11,36 @@ movieRouter.post(
   authMiddleware("admin"),
   upload.fields([
     { name: "coverImageUri", maxCount: 5 },
-    { name: "videoFileUri", maxCount: 2 },
+    { name: "videoFileUri", maxCount: 1 },
   ]),
   movieController.creteMovie
 );
 
 movieRouter.put(
   "/update-movie/:id",
-  authMiddleware(["admin", "user"]),
+  upload.fields([
+    { name: "coverImageUri", maxCount: 5 },
+    { name: "videoFileUri", maxCount: 1 },
+  ]),
+  authMiddleware(["admin"]),
   movieController.updateMovie
 );
 
-movieRouter.delete(
-  "/delete-movie/:id",
+movieRouter.get(
+  "/:id",
+  authMiddleware(["user", "admin"]),
+  movieController.getMovieById
+);
+movieRouter.patch(
+  "/soft-delete-movie/:id",
   authMiddleware("admin"),
-  movieController.deleteMovie
+  movieController.softDeleteMovie
+);
+
+movieRouter.delete(
+  "/hard-delete-movie/:id",
+  authMiddleware("admin"),
+  movieController.hardDeleteMovie
 );
 
 movieRouter.post(
@@ -34,7 +49,17 @@ movieRouter.post(
   movieController.addRating
 );
 
-movieRouter.get("/", authMiddleware("admin"), movieController.getAllMovies);
+movieRouter.delete(
+  "/delete-rating/:id/rating",
+  authMiddleware(["user", "admin"]),
+  movieController.deleteRating
+);
+
+movieRouter.get(
+  "/",
+  authMiddleware(["admin", "user"]),
+  movieController.getAllMovies
+);
 
 movieRouter.get("/search", movieController.searchMovies);
 export default movieRouter;

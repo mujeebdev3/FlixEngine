@@ -22,7 +22,7 @@ const movieSchema = new mongoose.Schema(
       required: true,
     },
     releaseDate: {
-      type: String,
+      type: Date,
       required: true,
     },
     genre: {
@@ -35,7 +35,7 @@ const movieSchema = new mongoose.Schema(
       type: Number,
       min: 1,
       max: 5,
-      default: 1,
+      default: null,
     },
     comment: {
       type: String,
@@ -64,6 +64,7 @@ const movieSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false,
+      select: false,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
