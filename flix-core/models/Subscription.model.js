@@ -1,35 +1,60 @@
-import mongoose from "mongoose";
+import { Schema, Types, model } from "mongoose";
 
-const subscriptionSchema = new mongoose.Schema(
+const SubscriptionStatus = [
+  "pending_activation",
+  "trialing",
+  "active",
+  "renewal_due",
+  "canceled",
+  "expired",
+  "payment_failed",
+  "grace",
+  "paused",
+  "cancel_at_period_end",
+  "cancelled",
+];
+
+const SubscriptionSchema = new Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
+    userId: {
+      type: Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
-    plan: {
-      type: String,
-      enum: ["Basic", "Standard", "Premium"],
+    planId: {
+      type: Types.ObjectId,
+      ref: "Plan",
       required: true,
     },
-    startDate: { type: Date, required: true, default: Date.now },
-    endDate: { type: Date, required: true },
+    planSnapshot: {
+      type: Schema.Types.Mixed,
+      required: true,
+    },
+    gateway: { type: String, require: true },
+    gatewaySubscriptionId: { type: String, required: true, index: true },
     status: {
       type: String,
-      enum: ["Active", "Expired", "Cancelled"],
-      default: "Active",
+      enum: SubscriptionStatus,
+      default: "pending_activation",
     },
-    price: { type: Number, required: true },
-    renewal: { type: Boolean, default: false },
+    startDate: Date,
+    currentPeriodStart: Date,
+    currentPeriodEnd: Date,
+    trialEndDate: Date,
+    cancelAtPerioidEnd: { type: Boolean, default: false },
+    cacelledAt: Date,
+    nextBillingAttemptAt: Date,
+    lastPaymentAttemptId: { type: Schema.Types.ObjectId, ref: "Invoice" },
+    paymentMethodId: Schema.Types.Mixed,
+    prorationCredits: { type: Number, default: 0 },
+    metadata: Schema.Types.Mixed,
   },
   { timestamps: true }
 );
 
-subscriptionSchema.index(
-  { user: 1, plan: 1 },
-  { unique: true, partialFilterExpression: { status: "Active" } }
-);
+SubscriptionSchema.index({ userId: 1, status: 1 });
 
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
+const Subscription = model("Subscription", SubscriptionSchema);
 
 export default Subscription;

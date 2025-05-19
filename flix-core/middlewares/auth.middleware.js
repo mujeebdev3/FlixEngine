@@ -31,14 +31,29 @@ const authMiddleware = (Roles = []) => {
       });
     }
     try {
+      const decoded = jwt.decode(accessToken);
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      // console.log(currentTime, decoded);
+      if (decoded.exp <= currentTime) {
+        console.log("🔄 Access token expired, trying to refresh...");
+
+        const newAccessToken = await refreshToken(req, res, next);
+        if (!newAccessToken) {
+          return next(new BadRequestError("failed to refresh access token"));
+        }
+        accessToken = newAccessToken;
+      }
+
       // Verify token
-      const decoded = jwt.verify(
+
+      const verifiedToken = jwt.verify(
         accessToken,
         TypeSafeEnv.getString("ACCESS_TOKEN_SECRET")
       );
       // console.log("decoded", decoded);
-      req.userId = decoded.userId;
-      req.role = decoded.role;
+      req.userId = verifiedToken.userId;
+      req.role = verifiedToken.role;
 
       // Role-based access control
       if (Roles.length > 0 && !Roles.includes(req.role)) {

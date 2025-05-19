@@ -56,4 +56,52 @@ const refreshToken = async (req, res, next) => {
     return false;
   }
 };
+
+const calculateEndDate = (startDate, duration) => {
+  const durationMap = {
+    "1 month": () => {
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      return endDate;
+    },
+    "3 months": () => {
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 3);
+      return endDate;
+    },
+    "6 months": () => {
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 6);
+      return endDate;
+    },
+    "1 year": () => {
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      return endDate;
+    },
+  };
+  if (!durationMap[duration]) {
+    throw new Error(
+      "Invalid duration provided.Supported values:'1 month','3 months','6 months','1 year'"
+    );
+  }
+  return durationMap[duration]();
+};
+
+//slugify.js
+
+export const slugify = (title) => {
+  const slug = title
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/[^\w-]+/g, "") // Remove all non-word chars
+    .replace(/--+/g, "-") // Replace multiple - with single -
+    .replace(/^-+/, "") // Trim - from start of text
+    .replace(/-+$/, ""); // Trim - from end of text
+  const uploadToken = uuidv4();
+  return { slug, uploadToken };
+};
+
 export default refreshToken;
+export { calculateEndDate };
