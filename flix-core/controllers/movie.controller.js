@@ -42,10 +42,19 @@ class movieController {
       const movieId = req.params.id;
       // console.log("movieId", req.params);
       const movieData = req.body;
-      const updatedMovie = await MovieService.updateMovie(movieId, movieData);
+      const coverImageUri =
+        req.files?.coverImageUri?.map((file) => file.path) || [];
+
+      const videoFileUri =
+        req.files?.videoFileUri?.map((file) => file.path) || [];
+      const updatedMovie = await MovieService.updateMovie(
+        movieId,
+        movieData,
+        coverImageUri,
+        videoFileUri
+      );
       res.status(STATUS_CODES.CREATED).json({
-        message: SUCCESS_MESSAGES.MOVIE_UPDATED,
-        data: updatedMovie,
+        message: updatedMovie,
         success: true,
         error: false,
       });
@@ -54,11 +63,27 @@ class movieController {
     }
   }
 
-  async deleteMovie(req, res, next) {
+  async softDeleteMovie(req, res, next) {
     try {
       const movieId = req.params.id;
       // console.log("movieId", req.params);
-      const deletedMovie = await MovieService.deleteMovie(movieId);
+      const deletedMovie = await MovieService.softDeleteMovie(movieId);
+      res.status(STATUS_CODES.SUCCESS).json({
+        message: SUCCESS_MESSAGES.MOVIE_DELETED,
+        data: deletedMovie,
+        success: true,
+        error: false,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async hardDeleteMovie(req, res, next) {
+    try {
+      const movieId = req.params.id;
+      // console.log("movieId", req.params);
+      const deletedMovie = await MovieService.hardDeleteMovie(movieId);
       res.status(STATUS_CODES.SUCCESS).json({
         message: SUCCESS_MESSAGES.MOVIE_DELETED,
         data: deletedMovie,
@@ -93,10 +118,31 @@ class movieController {
     }
   }
 
+  async deleteRating(req, res, next) {
+    try {
+      const movieId = req.params.id;
+      const userId = req.userId;
+      const deleteType = req.query.type;
+      console.log("deleteType", req.query);
+      const deletedRating = await MovieService.deleteUserRating(
+        movieId,
+        userId,
+        deleteType
+      );
+      res.status(STATUS_CODES.SUCCESS).json({
+        message: SUCCESS_MESSAGES.MOVIE_RATING_DELETED,
+        data: deletedRating,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async searchMovies(req, res, next) {
     try {
       const query = req.query.q;
-      // console.log("query", req.query.q);
+
+      console.log("query", req.query.q);
       const movies = await MovieService.searchMovie(query);
 
       res.status(STATUS_CODES.SUCCESS).json({
@@ -127,6 +173,19 @@ class movieController {
         currentPage: page,
         totalPages: Math.ceil(totalMovies / limit),
         movies,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMovieById(req, res, next) {
+    const movieId = req.params.id;
+    try {
+      const movie = await MovieService.getMovieById(movieId);
+      res.status(STATUS_CODES.SUCCESS).json({
+        message: SUCCESS_MESSAGES.OPERATION_SUCCESSFUL,
+        data: movie,
       });
     } catch (err) {
       next(err);

@@ -1,5 +1,5 @@
 {
-  "name": "netflix-backend-api",
+  "name": "flix-core",
   "version": "1.0.0",
   "description": "A robust backend API for a Netflix clone, built with Node.js, Express, and MongoDB, providing authentication, user management, movie data, and streaming features.",
   "main": "server.js",
@@ -30,12 +30,20 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.726.1",
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",
+    "dropbox": "^10.34.0",
     "express": "^4.21.2",
+    "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.3",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.16",
+    "path": "^0.12.7",
+    "stripe": "^17.6.0",
     "ts-typesafe-env": "^1.1.0",
     "uuid": "^11.0.4"
   },
@@ -45,6 +53,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Innocent6303/NETFLIX-BACKEND"
+    "url": "https://github.com/mujeebdev3/NETFLIX-BACKEND"
   }
 }

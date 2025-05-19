@@ -16,7 +16,7 @@ const generateToken = async (res, userId, role) => {
 
     const refreshToken = jwt.sign(
       { userId, role, uniqueAccessTokenValue },
-      TypeSafeEnv.getString("Refresh_TOKEN_SECRET"),
+      TypeSafeEnv.getString("REFRESH_TOKEN_SECRET"),
       { expiresIn: TypeSafeEnv.getString("REFRESH_TOKEN_EXPIRY") }
     );
     // console.log("refreshToken: " + refreshToken);

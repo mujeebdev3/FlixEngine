@@ -1,6 +1,7 @@
 import e from "express";
 
 import { adminController } from "../controllers/index.js";
+
 import { authMiddleware } from "../middlewares/index.js";
 
 const adminRouter = e.Router();
@@ -12,7 +13,7 @@ adminRouter.get(
 );
 adminRouter.put(
   "/update-details",
-  authMiddleware("user"),
+  authMiddleware("admin"),
   adminController.updateAdmin
 );
 adminRouter.post("/forgot-password", adminController.forgetPassword);

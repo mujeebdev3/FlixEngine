@@ -17,7 +17,7 @@ class MovieRepository {
       .limit(limit)
       .lean()
       .select(
-        "title description releaseDate genre rating coverImageUri comment"
+        "title description releaseDate genre rating coverImageUri videoFileUri comment"
       );
     return {
       movies,
@@ -48,7 +48,7 @@ class MovieRepository {
   }
 
   // Soft delete a movie (set 'isDeleted' to true)
-  async deleteMovie(movieId) {
+  async softDeleteMovie(movieId) {
     const movie = await Movie.findById(movieId);
 
     movie.isDeleted = true;
@@ -76,23 +76,7 @@ class MovieRepository {
     }).lean();
   }
 
-  async findUserRating(movieId, userId) {
-    const rating = await Rating.findOne({ movieId, userId }).lean();
-
-    if (!rating) {
-      return null;
-    }
-
-    return rating.rating;
-  }
-
-  async updateMovieRating(movieId, userId, rating, comment) {
-    return await Rating.findOneAndUpdate(
-      { movieId, userId },
-      { $set: { rating, comment } },
-      { new: true }
-    );
-  }
+  /* MOVIE RATING */
 
   async addMovieRating(movieId, userId, rating, comment) {
     const result = await Rating.create({
@@ -105,17 +89,53 @@ class MovieRepository {
     return result;
   }
 
+  async findUserRating(movieId, userId) {
+    const rating = await Rating.findOne({ movieId, userId }).lean();
+
+    if (!rating) {
+      return null;
+    }
+
+    return rating.rating;
+  }
+
+  async updateMovieRating(movieId, userId, updatedFields) {
+    return await Rating.findOneAndUpdate(
+      { movieId, userId },
+      { $set: updatedFields },
+      { new: true }
+    );
+  }
+
+  async updateRatingPartial(movieId, userId, unsetFields) {
+    return await Rating.findOneAndUpdate(
+      { movieId, userId },
+      { $unset: unsetFields },
+      { new: true }
+    );
+  }
+
+  async deleteUserRating(movieId, userId) {
+    return await Rating.findOneAndDelete({ movieId, userId });
+  }
+
   async calculateAverageRating(movieId) {
-    const ratings = await Rating.find({ movieId }).lean();
+    const ratings = await Rating.find({
+      movieId,
+      rating: { $exists: true },
+    }).lean();
     if (!ratings || ratings.length === 0) {
       return 0;
     }
-
     const totalRating = ratings.reduce((sum, rating) => sum + rating.rating, 0);
     return totalRating / ratings.length;
   }
+
   async calculateComment(movieId) {
-    const commentCount = await Rating.countDocuments({ movieId });
+    const commentCount = await Rating.countDocuments({
+      movieId,
+      comment: { $exists: true },
+    });
 
     return commentCount;
   }
